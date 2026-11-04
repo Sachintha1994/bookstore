@@ -1,0 +1,15 @@
+**/node_modules
+**/dist
+**/dist-ssr
+**/.env
+**/.env.*
+!**/.env.example
+**/.git
+**/*.log
+backend/data
+**/*.db
+**/*.db-journal
+**/*.db-shm
+**/*.db-wal
+.github
+*.md

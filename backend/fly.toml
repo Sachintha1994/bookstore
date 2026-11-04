@@ -1,0 +1,44 @@
+# Fly.io app config for the bookstore backend.
+# Deploy from inside this directory: `cd backend && fly launch` (first time)
+# or `fly deploy` (subsequent deploys). Fly's free allowance includes a
+# small always-on VM plus a persistent volume, which is what SQLite needs
+# to survive restarts/deploys (unlike most "free" container platforms that
+# use an ephemeral filesystem).
+app = "bookstore-backend" # fly will ask to rename this if it's taken
+primary_region = "sin"    # Singapore; change to the region closest to you
+
+[build]
+
+[env]
+  PORT = "4000"
+  NODE_ENV = "production"
+  # CORS_ORIGIN should point at the deployed frontend URL, e.g.
+  # https://bookstore-frontend.onrender.com — set with:
+  #   fly secrets set CORS_ORIGIN=https://your-frontend-url
+  # JWT_SECRET must also be set as a secret, never committed here:
+  #   fly secrets set JWT_SECRET=$(openssl rand -hex 32)
+
+[[mounts]]
+  source = "bookstore_data"
+  destination = "/app/data"
+
+[http_service]
+  internal_port = 4000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "15s"
+    method = "GET"
+    path = "/health"
+    protocol = "http"
+    timeout = "3s"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256

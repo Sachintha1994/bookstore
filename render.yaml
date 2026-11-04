@@ -1,0 +1,48 @@
+# Render Blueprint.
+# Dashboard -> New -> Blueprint -> connect this GitHub repo -> Render reads
+# this file and provisions both services below in one go, 100% on free plans.
+#
+# IMPORTANT — SQLite persistence on Render's free plan:
+# Render's free web services use an EPHEMERAL filesystem: the SQLite file at
+# /app/data/bookstore.db is reset on every deploy and whenever the free
+# instance spins down after 15 minutes of inactivity and later restarts.
+# That's fine for a demo/review environment. For real persistence either:
+#   a) upgrade bookstore-backend to a paid instance type and add a Render
+#      Persistent Disk mounted at /app/data, or
+#   b) deploy the backend to Fly.io instead (see backend/fly.toml), which
+#      includes a free persistent volume.
+services:
+  - type: web
+    name: bookstore-backend
+    runtime: docker
+    repo: https://github.com/<your-org>/<your-repo>
+    plan: free
+    region: singapore
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: https://bookstore-frontend.onrender.com
+    # Render injects its own $PORT for Docker web services; config.js
+    # already reads process.env.PORT, so no PORT var is set here.
+
+  - type: web
+    name: bookstore-frontend
+    runtime: static
+    repo: https://github.com/<your-org>/<your-repo>
+    plan: free
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://bookstore-backend.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
