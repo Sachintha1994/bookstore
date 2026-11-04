@@ -15,7 +15,7 @@ services:
   - type: web
     name: bookstore-backend
     runtime: docker
-    repo: https://github.com/<your-org>/<your-repo>
+    repo: https://github.com/Sachintha1994/bookstore
     plan: free
     region: singapore
     rootDir: backend
@@ -34,7 +34,7 @@ services:
   - type: web
     name: bookstore-frontend
     runtime: static
-    repo: https://github.com/<your-org>/<your-repo>
+    repo: https://github.com/Sachintha1994/bookstore
     plan: free
     rootDir: frontend
     buildCommand: npm ci && npm run build
@@ -46,3 +46,4 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+
