@@ -120,7 +120,7 @@ export default function Books() {
   function autoFillCoverFromIsbn() {
     const cleanIsbn = (form.isbn || '').replace(/[^0-9X]/gi, '');
     if (!cleanIsbn) {
-      setFormError('Please enter an ISBN first to fetch the cover.');
+      setFormError('Please enter an ISBN first (e.g. 9780061122415) to auto-fetch cover.');
       return;
     }
     const coverUrl = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-M.jpg`;
@@ -173,7 +173,7 @@ export default function Books() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Book Catalog & Inventory</h1>
-          <p className="page-subtitle">Manage books, inventory levels, and cover images</p>
+          <p className="page-subtitle">Manage books, inventory levels, and front cover visuals</p>
         </div>
         <button type="button" className="btn btn-primary" onClick={openAdd}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -420,7 +420,7 @@ export default function Books() {
         </div>
       )}
 
-      {/* Add / Edit Modal with Live Cover Preview */}
+      {/* Add / Edit Modal with Immediate Live Cover Preview & Prominent ISBN Auto-Fetch */}
       {editing && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal modal-lg" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
@@ -449,21 +449,24 @@ export default function Books() {
                 </div>
                 <div className="cover-preview-caption">
                   {form.cover_image ? (
-                    <span className="text-emerald">✓ Cover URL loaded</span>
+                    <span className="text-emerald">✓ Cover preview loaded</span>
                   ) : (
-                    <span className="text-muted">No cover image URL set. Default styled cover will be used.</span>
+                    <span className="text-muted">No image URL set. Fallback cover shown.</span>
                   )}
                 </div>
-                {form.isbn && (
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm auto-cover-btn"
-                    onClick={autoFillCoverFromIsbn}
-                    title="Fetch cover from Open Library using current ISBN"
-                  >
-                    Fetch Open Library Cover
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm auto-cover-btn"
+                  onClick={autoFillCoverFromIsbn}
+                  title="Fetch cover from Open Library using current ISBN"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                    <line x1="16" y1="5" x2="22" y2="5" />
+                    <line x1="19" y1="2" x2="19" y2="8" />
+                  </svg>
+                  Auto-Fetch Cover
+                </button>
               </div>
 
               {/* Right Column: Form Fields */}
@@ -511,14 +514,28 @@ export default function Books() {
 
                 <div className="form-row-2">
                   <div className="form-group">
-                    <label htmlFor="book-isbn">ISBN</label>
-                    <input
-                      id="book-isbn"
-                      className="form-control"
-                      placeholder="e.g. 9780061122415"
-                      value={form.isbn}
-                      onChange={(e) => setForm({ ...form, isbn: e.target.value })}
-                    />
+                    <label htmlFor="book-isbn">
+                      ISBN
+                      <span className="label-hint"> (Use to fetch cover)</span>
+                    </label>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <input
+                        id="book-isbn"
+                        className="form-control"
+                        placeholder="e.g. 9780061122415"
+                        value={form.isbn}
+                        onChange={(e) => setForm({ ...form, isbn: e.target.value })}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={autoFillCoverFromIsbn}
+                        title="Auto-fetch cover from Open Library using this ISBN"
+                        style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                      >
+                        Fetch Cover
+                      </button>
+                    </div>
                   </div>
 
                   <div className="form-group">
@@ -602,7 +619,7 @@ export default function Books() {
                     )}
                   </div>
                   <div className="field-hint">
-                    Live preview renders on the left as you type. If left blank, a fallback cover is generated.
+                    Live preview renders immediately on the left. If left blank, an elegant styled placeholder is displayed.
                   </div>
                 </div>
 

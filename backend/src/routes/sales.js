@@ -1,6 +1,8 @@
 const express = require('express');
 const db = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { sendError, AppError } = require('../utils/errors');
+const { paginate } = require('../utils/pagination');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -24,27 +26,40 @@ function getSaleDetail(saleId) {
 router.post('/', (req, res) => {
   const { customer_id, items } = req.body || {};
 
+  const details = [];
   if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ error: 'items must be a non-empty array of {book_id, quantity}' });
+    details.push({ field: 'items', issue: 'items must be a non-empty array of {book_id, quantity}' });
+    return sendError(res, 400, 'INVALID_INPUT', 'Validation failed', details);
   }
 
-  for (const item of items) {
-    if (!item.book_id || !item.quantity || item.quantity <= 0) {
-      return res.status(400).json({ error: 'each item requires a valid book_id and a positive quantity' });
+  items.forEach((item, index) => {
+    if (!item.book_id) {
+      details.push({ field: `items[${index}].book_id`, issue: 'book_id is required' });
     }
+    if (!item.quantity || isNaN(Number(item.quantity)) || Number(item.quantity) <= 0) {
+      details.push({ field: `items[${index}].quantity`, issue: 'quantity must be a positive integer' });
+    }
+  });
+
+  if (details.length > 0) {
+    return sendError(res, 400, 'INVALID_INPUT', 'Validation failed', details);
   }
 
   function createSale(customerId, saleItems) {
-    const books = saleItems.map((item) => {
+    const books = saleItems.map((item, index) => {
       const book = db.prepare('SELECT * FROM books WHERE id = ?').get(item.book_id);
       if (!book) {
-        throw { status: 400, message: `Book with id ${item.book_id} not found` };
+        throw new AppError(400, 'INVALID_INPUT', 'Validation failed', [
+          { field: `items[${index}].book_id`, issue: `Book with id ${item.book_id} not found` },
+        ]);
       }
       if (item.quantity > book.stock_quantity) {
-        throw {
-          status: 400,
-          message: `Insufficient stock for "${book.title}": requested ${item.quantity}, only ${book.stock_quantity} in stock`,
-        };
+        throw new AppError(400, 'INVALID_INPUT', 'Validation failed', [
+          {
+            field: `items[${index}].quantity`,
+            issue: `Insufficient stock for "${book.title}": requested ${item.quantity}, only ${book.stock_quantity} available`,
+          },
+        ]);
       }
       return { book, quantity: item.quantity };
     });
@@ -82,10 +97,11 @@ router.post('/', (req, res) => {
   try {
     const saleId = db.transaction(() => createSale(customer_id, items));
     const sale = getSaleDetail(saleId);
+    res.setHeader('Location', `/api/v1/sales/${sale.id}`);
     res.status(201).json(sale);
   } catch (err) {
-    if (err && err.status) {
-      return res.status(err.status).json({ error: err.message });
+    if (err instanceof AppError) {
+      return sendError(res, err.statusCode, err.code, err.message, err.details);
     }
     throw err;
   }
@@ -101,13 +117,14 @@ router.get('/', (req, res) => {
     )
     .all();
 
-  res.json(sales);
+  const result = paginate(req, res, sales);
+  res.json(result.body);
 });
 
 router.get('/:id', (req, res) => {
   const sale = getSaleDetail(req.params.id);
   if (!sale) {
-    return res.status(404).json({ error: 'Sale not found' });
+    return sendError(res, 404, 'NOT_FOUND', 'Sale not found');
   }
   res.json(sale);
 });

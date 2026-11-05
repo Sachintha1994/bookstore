@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const { DatabaseSync } = require('node:sqlite');
 
-const dataDir = path.join(__dirname, '..', 'data');
+const dataDir = process.env.VERCEL ? '/tmp' : (process.env.DATA_DIR || path.join(__dirname, '..', 'data'));
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
@@ -82,3 +82,29 @@ function transaction(fn) {
 
 module.exports = db;
 module.exports.transaction = transaction;
+\n
+// Auto-seed admin user and sample catalog if empty
+try {
+  const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
+  if (userCount === 0) {
+    const bcrypt = require('bcryptjs');
+    const passwordHash = bcrypt.hashSync('admin123', 10);
+    db.prepare('INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)').run('admin', passwordHash, 'admin');
+
+    const sampleBooks = [
+      { title: 'The Alchemist', author: 'Paulo Coelho', category: 'Fiction', isbn: '9780061122415', price: 1200, stock_quantity: 20, reorder_threshold: 5, cover_image: 'https://covers.openlibrary.org/b/isbn/9780062315007-M.jpg' },
+      { title: 'Atomic Habits', author: 'James Clear', category: 'Self-Help', isbn: '9780735211292', price: 1800, stock_quantity: 15, reorder_threshold: 5, cover_image: 'https://covers.openlibrary.org/b/isbn/9780735211292-M.jpg' },
+      { title: 'Clean Code', author: 'Robert C. Martin', category: 'Technology', isbn: '9780132350884', price: 3500, stock_quantity: 3, reorder_threshold: 5, cover_image: 'https://covers.openlibrary.org/b/isbn/9780132350884-M.jpg' },
+      { title: 'Sapiens', author: 'Yuval Noah Harari', category: 'History', isbn: '9780062316097', price: 2200, stock_quantity: 10, reorder_threshold: 4, cover_image: 'https://covers.openlibrary.org/b/isbn/9780062316097-M.jpg' },
+      { title: 'The Hobbit', author: 'J.R.R. Tolkien', category: 'Fantasy', isbn: '9780547928227', price: 1500, stock_quantity: 2, reorder_threshold: 5, cover_image: 'https://covers.openlibrary.org/b/isbn/9780547928227-M.jpg' },
+      { title: 'Rich Dad Poor Dad', author: 'Robert Kiyosaki', category: 'Finance', isbn: '9781612680194', price: 1600, stock_quantity: 25, reorder_threshold: 5, cover_image: 'https://covers.openlibrary.org/b/isbn/9781612680194-M.jpg' }
+    ];
+
+    const insertBook = db.prepare('INSERT INTO books (title, author, category, isbn, price, stock_quantity, reorder_threshold, cover_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+    for (const b of sampleBooks) {
+      insertBook.run(b.title, b.author, b.category, b.isbn, b.price, b.stock_quantity, b.reorder_threshold, b.cover_image);
+    }
+  }
+} catch (seedErr) {
+  console.error('Auto-seed check error:', seedErr);
+}

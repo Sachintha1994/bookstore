@@ -9,7 +9,8 @@
   "scripts": {
     "start": "node --no-warnings=ExperimentalWarning src/server.js",
     "dev": "nodemon --no-warnings=ExperimentalWarning src/server.js",
-    "seed": "node --no-warnings=ExperimentalWarning scripts/seed.js"
+    "seed": "node --no-warnings=ExperimentalWarning scripts/seed.js",
+    "test": "node --no-warnings=ExperimentalWarning test/contract.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

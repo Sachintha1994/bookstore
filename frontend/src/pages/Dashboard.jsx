@@ -85,7 +85,7 @@ export default function Dashboard() {
 
       {/* Dashboard Sections Grid */}
       <div className="dashboard-grid">
-        {/* Section 1: Low Stock Alerts */}
+        {/* Section 1: Low Stock Alerts with Book Covers */}
         <section className="card dashboard-card">
           <div className="card-header-row">
             <div>

@@ -1,0 +1,1343 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "TSW Lanka Bookstore Management API",
+    "version": "1.0.0",
+    "description": "Enterprise RESTful API conforming to the TSW Lanka API Design standard. Covers Catalog Management, Inventory, Sales Transactions, POS Customer Directory, and Real-Time Analytics.",
+    "contact": {
+      "name": "Dinesh Rajapaksha — Backend Developer",
+      "company": "TSW Lanka Pvt Ltd"
+    }
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "Primary Versioned API (v1)"
+    },
+    {
+      "url": "/api",
+      "description": "Legacy Compatibility Alias"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "summary": "User Authentication",
+        "description": "Authenticates bookstore staff credentials and issues a stateless 12-hour JWT bearer token.",
+        "security": [],
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authentication successful, token issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/401Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/429RateLimit"
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalError"
+          }
+        }
+      }
+    },
+    "/books": {
+      "get": {
+        "summary": "List Books",
+        "description": "Retrieves catalog books with optional substring filtering across title/author/category/isbn and optional pagination.",
+        "tags": [
+          "Books"
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search keyword matching title, author, category, or ISBN",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-indexed) for paginated response",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of items per page (default 20, max 100)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Books list or paginated response",
+            "headers": {
+              "X-Total-Count": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Total number of books matching criteria"
+              },
+              "X-Page": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Current page"
+              },
+              "X-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Page limit"
+              },
+              "X-Total-Pages": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Total page count"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Book"
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Book"
+                          }
+                        },
+                        "pagination": {
+                          "$ref": "#/components/schemas/PaginationMeta"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/429RateLimit"
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalError"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Book",
+        "description": "Adds a new book record to the catalog. Emits a Location header containing the resource URI.",
+        "tags": [
+          "Books"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Book created successfully",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Relative URI to the created book resource"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Book"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/401Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/429RateLimit"
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalError"
+          }
+        }
+      }
+    },
+    "/books/{id}": {
+      "get": {
+        "summary": "Get Book by ID",
+        "description": "Retrieves full details for an individual book by primary ID.",
+        "tags": [
+          "Books"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Book found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Book"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/404NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/429RateLimit"
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalError"
+          }
+        }
+      },
+      "put": {
+        "summary": "Replace Book (Full Update)",
+        "description": "Updates all mutable properties of an existing book.",
+        "tags": [
+          "Books"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Book updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Book"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/401Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/404NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/429RateLimit"
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalError"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Patch Book (Partial Update)",
+        "description": "Partially updates specified fields of an existing book.",
+        "tags": [
+          "Books"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookPatchInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Book updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Book"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/401Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/404NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/429RateLimit"
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalError"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Book",
+        "description": "Deletes a book from the catalog. Fails with 409 Conflict if sales transactions reference this book.",
+        "tags": [
+          "Books"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Book deleted successfully"
+          },
+          "401": {
+            "$ref": "#/components/responses/401Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/404NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/409Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/429RateLimit"
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalError"
+          }
+        }
+      }
+    },
+    "/customers": {
+      "get": {
+        "summary": "List Customers",
+        "description": "Retrieves POS customer records with optional pagination.",
+        "tags": [
+          "Customers"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of customers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Customer"
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Customer"
+                          }
+                        },
+                        "pagination": {
+                          "$ref": "#/components/schemas/PaginationMeta"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/429RateLimit"
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalError"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Customer",
+        "description": "Enrolls a new customer for sales receipts.",
+        "tags": [
+          "Customers"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Customer created",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URI of newly created customer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Customer"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/401Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/429RateLimit"
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalError"
+          }
+        }
+      }
+    },
+    "/customers/{id}": {
+      "get": {
+        "summary": "Get Customer by ID",
+        "tags": [
+          "Customers"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Customer found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Customer"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/404NotFound"
+          }
+        }
+      }
+    },
+    "/sales": {
+      "get": {
+        "summary": "List Sales History",
+        "description": "Retrieves historical orders sorted in reverse chronological order.",
+        "tags": [
+          "Sales"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sales transactions list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SaleSummary"
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/SaleSummary"
+                          }
+                        },
+                        "pagination": {
+                          "$ref": "#/components/schemas/PaginationMeta"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/429RateLimit"
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalError"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Sale (Checkout)",
+        "description": "Executes an atomic checkout transaction: decrements book inventories, calculates line items and total, and persists the transaction.",
+        "tags": [
+          "Sales"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaleInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sale successfully created",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URI of newly created sale record"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaleDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/401Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/429RateLimit"
+          },
+          "500": {
+            "$ref": "#/components/responses/500InternalError"
+          }
+        }
+      }
+    },
+    "/sales/{id}": {
+      "get": {
+        "summary": "Get Sale Detail",
+        "description": "Retrieves complete invoice / receipt breakdown including line items and customer association.",
+        "tags": [
+          "Sales"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sale transaction breakdown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaleDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/404NotFound"
+          }
+        }
+      }
+    },
+    "/reports/low-stock": {
+      "get": {
+        "summary": "Low Stock Inventory Report",
+        "description": "Identifies catalog items whose stock quantity is less than or equal to their reorder threshold.",
+        "tags": [
+          "Reports"
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of low-stock books",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Book"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401Unauthorized"
+          }
+        }
+      }
+    },
+    "/reports/best-sellers": {
+      "get": {
+        "summary": "Top Best Sellers Report",
+        "description": "Retrieves top 10 best-selling titles ranked by aggregate volume sold.",
+        "tags": [
+          "Reports"
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of best-selling titles with total_sold counts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BestSellerItem"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401Unauthorized"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Stateless JWT issued by /api/v1/auth/login. Include in Authorization: Bearer <token>"
+      }
+    },
+    "schemas": {
+      "ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "Target body property or query parameter"
+          },
+          "issue": {
+            "type": "string",
+            "description": "Specific description of the validation failure"
+          }
+        },
+        "required": [
+          "issue"
+        ]
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "description": "Standard TSW Lanka API Error Envelope",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "INVALID_INPUT",
+                  "UNAUTHORIZED",
+                  "FORBIDDEN",
+                  "NOT_FOUND",
+                  "CONFLICT",
+                  "RATE_LIMIT_EXCEEDED",
+                  "INTERNAL_ERROR"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "example": 1
+          },
+          "limit": {
+            "type": "integer",
+            "example": 20
+          },
+          "total": {
+            "type": "integer",
+            "example": 45
+          },
+          "totalPages": {
+            "type": "integer",
+            "example": 3
+          },
+          "hasNextPage": {
+            "type": "boolean",
+            "example": true
+          },
+          "hasPrevPage": {
+            "type": "boolean",
+            "example": false
+          }
+        },
+        "required": [
+          "page",
+          "limit",
+          "total",
+          "totalPages",
+          "hasNextPage",
+          "hasPrevPage"
+        ]
+      },
+      "Book": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "title": {
+            "type": "string",
+            "example": "The Alchemist"
+          },
+          "author": {
+            "type": "string",
+            "nullable": true,
+            "example": "Paulo Coelho"
+          },
+          "category": {
+            "type": "string",
+            "nullable": true,
+            "example": "Fiction"
+          },
+          "isbn": {
+            "type": "string",
+            "nullable": true,
+            "example": "9780061122415"
+          },
+          "price": {
+            "type": "number",
+            "example": 1200
+          },
+          "stock_quantity": {
+            "type": "integer",
+            "example": 20
+          },
+          "reorder_threshold": {
+            "type": "integer",
+            "example": 5
+          },
+          "cover_image": {
+            "type": "string",
+            "nullable": true,
+            "example": "https://covers.openlibrary.org/b/isbn/9780062315007-M.jpg"
+          },
+          "created_at": {
+            "type": "string",
+            "example": "2026-11-04 22:15:00"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "price",
+          "stock_quantity",
+          "reorder_threshold"
+        ]
+      },
+      "BookInput": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Clean Architecture"
+          },
+          "author": {
+            "type": "string",
+            "example": "Robert C. Martin"
+          },
+          "category": {
+            "type": "string",
+            "example": "Technology"
+          },
+          "isbn": {
+            "type": "string",
+            "example": "9780134494166"
+          },
+          "price": {
+            "type": "number",
+            "example": 4200
+          },
+          "stock_quantity": {
+            "type": "integer",
+            "example": 10
+          },
+          "reorder_threshold": {
+            "type": "integer",
+            "example": 5
+          },
+          "cover_image": {
+            "type": "string",
+            "example": "https://covers.openlibrary.org/b/isbn/9780134494166-M.jpg"
+          }
+        },
+        "required": [
+          "title",
+          "price"
+        ]
+      },
+      "BookPatchInput": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "isbn": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "stock_quantity": {
+            "type": "integer"
+          },
+          "reorder_threshold": {
+            "type": "integer"
+          },
+          "cover_image": {
+            "type": "string"
+          }
+        }
+      },
+      "Customer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "Saman Perera"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true,
+            "example": "0771234567"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true,
+            "example": "saman@example.lk"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "CustomerInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Saman Perera"
+          },
+          "phone": {
+            "type": "string",
+            "example": "0771234567"
+          },
+          "email": {
+            "type": "string",
+            "example": "saman@example.lk"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "SaleItemInput": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "integer",
+            "example": 1
+          },
+          "quantity": {
+            "type": "integer",
+            "example": 2
+          }
+        },
+        "required": [
+          "book_id",
+          "quantity"
+        ]
+      },
+      "SaleInput": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "integer",
+            "nullable": true,
+            "example": 1
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SaleItemInput"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "SaleItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "book_id": {
+            "type": "integer",
+            "example": 1
+          },
+          "book_title": {
+            "type": "string",
+            "example": "The Alchemist"
+          },
+          "quantity": {
+            "type": "integer",
+            "example": 2
+          },
+          "unit_price": {
+            "type": "number",
+            "example": 1200
+          },
+          "subtotal": {
+            "type": "number",
+            "example": 2400
+          }
+        },
+        "required": [
+          "id",
+          "book_id",
+          "book_title",
+          "quantity",
+          "unit_price",
+          "subtotal"
+        ]
+      },
+      "SaleDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "customer_id": {
+            "type": "integer",
+            "nullable": true,
+            "example": 1
+          },
+          "total_amount": {
+            "type": "number",
+            "example": 2400
+          },
+          "created_at": {
+            "type": "string",
+            "example": "2026-11-05 09:30:00"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SaleItem"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "total_amount",
+          "created_at",
+          "items"
+        ]
+      },
+      "SaleSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "customer_name": {
+            "type": "string",
+            "nullable": true,
+            "example": "Saman Perera"
+          },
+          "total_amount": {
+            "type": "number",
+            "example": 2400
+          },
+          "created_at": {
+            "type": "string",
+            "example": "2026-11-05 09:30:00"
+          }
+        },
+        "required": [
+          "id",
+          "total_amount",
+          "created_at"
+        ]
+      },
+      "BestSellerItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "title": {
+            "type": "string",
+            "example": "The Alchemist"
+          },
+          "author": {
+            "type": "string",
+            "nullable": true,
+            "example": "Paulo Coelho"
+          },
+          "category": {
+            "type": "string",
+            "nullable": true,
+            "example": "Fiction"
+          },
+          "isbn": {
+            "type": "string",
+            "nullable": true,
+            "example": "9780061122415"
+          },
+          "price": {
+            "type": "number",
+            "example": 1200
+          },
+          "stock_quantity": {
+            "type": "integer",
+            "example": 15
+          },
+          "cover_image": {
+            "type": "string",
+            "nullable": true,
+            "example": "https://covers.openlibrary.org/b/isbn/9780062315007-M.jpg"
+          },
+          "total_sold": {
+            "type": "integer",
+            "example": 5
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "price",
+          "total_sold"
+        ]
+      },
+      "LoginInput": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "admin"
+          },
+          "password": {
+            "type": "string",
+            "example": "admin123"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ]
+      },
+      "LoginSuccess": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          }
+        },
+        "required": [
+          "token"
+        ]
+      }
+    },
+    "responses": {
+      "400BadRequest": {
+        "description": "Bad Request - Input validation error with field-level details",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "401Unauthorized": {
+        "description": "Unauthorized - Bearer token missing, expired, or invalid",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "404NotFound": {
+        "description": "Not Found - Resource does not exist",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "409Conflict": {
+        "description": "Conflict - Dependent records or constraint violation",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "429RateLimit": {
+        "description": "Too Many Requests - Rate limit exceeded",
+        "headers": {
+          "Retry-After": {
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Seconds until rate limit reset"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "500InternalError": {
+        "description": "Internal Server Error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      }
+    }
+  }
+}
