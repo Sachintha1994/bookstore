@@ -82,7 +82,8 @@ function transaction(fn) {
 
 module.exports = db;
 module.exports.transaction = transaction;
-\n
+
+
 // Auto-seed admin user and sample catalog if empty
 try {
   const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
